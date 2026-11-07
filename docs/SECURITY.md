@@ -1,19 +1,11 @@
-# Security notes
+# Security
 
-## Threat model
+## Threat Model
 
-`trysac-output-moderation-hooks` is a pure library without I/O. The main risks are:
+### Defended
+- **Data Leakage in Audits**: `on_event` callbacks and error messages never include matched text. Payloads only include `rule_id`, `category`, `action`, and character offsets.
+- **Unvalidated Input**: The library enforces strict bounds: max 200 rules, 1000 terms per rule, 500 characters per regex, and a total text length capped at `max_input_chars` (default 100,000).
+- **Classifier Stability**: Scores are validated against the `[0.0, 1.0]` range. Exceptions in external classifiers are caught and trigger `classifier_failed`. When `fail_open` is `False`, the system blocks instead of proceeding.
 
-- **Supply chain**: a compromised dependency or CI action. Mitigation: no runtime dependencies,
-  Dependabot weekly updates, actions pinned to major versions, minimal workflow permissions.
-- **Leaked secrets**: tokens committed by mistake. Mitigation: `gitleaks` runs in the local gates
-  and in CI; `.env` files are git-ignored.
-- **Untrusted input**: callers may pass hostile strings. Mitigation: validate input and fail with
-  explicit exceptions; never `eval`, `exec` or deserialize untrusted data.
-
-## Publishing
-
-Releases are published to PyPI with trusted publishing (OIDC) when available, never with a
-long-lived token stored in the repository.
-
-To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+### Not Defended
+- **Regex Denial of Service (ReDoS)**: Regex patterns are provided by the operator and are treated as trusted configuration. No deep analysis of pattern complexity is performed. Operators are responsible for ensuring patterns do not exhibit exponential backtracking.

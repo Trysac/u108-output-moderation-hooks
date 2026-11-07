@@ -1,48 +1,40 @@
 # output-moderation-hooks
 
-[![PyPI version](https://img.shields.io/pypi/v/trysac-output-moderation-hooks)](https://pypi.org/project/trysac-output-moderation-hooks/)
-[![License: MIT](https://img.shields.io/pypi/l/trysac-output-moderation-hooks)](LICENSE)
-[![CI](https://github.com/Trysac/u108-output-moderation-hooks/actions/workflows/ci.yml/badge.svg)](https://github.com/Trysac/u108-output-moderation-hooks/actions/workflows/ci.yml)
+Moderate LLM output with configurable regex and term rules, categories, block, redact and flag actions, optional classifiers and streaming holdback.
 
-Moderate LLM output with configurable regex and term rules, categories, block, redact and flag actions, optional classifiers and streaming holdback
+## Installation
 
-## Problem
-
-Describe in two or three sentences the concrete problem this utility solves, who hits it, and what
-they do today without it. Replace this paragraph when the first real feature lands.
-
-## Install
-
-```sh
-pip install trysac-output-moderation-hooks
-# or
-uv add trysac-output-moderation-hooks
+```bash
+pip install output-moderation-hooks
 ```
-
-Requires Python 3.10 or newer. No runtime dependencies.
 
 ## Usage
 
 ```python
-import output_moderation_hooks
+from output_moderation_hooks import Moderator, Rule
 
-# normalize() trims surrounding whitespace and lower-cases the text.
-print(output_moderation_hooks.normalize("  Hello World "))  # -> "hello world"
-
-# Blank input is rejected explicitly instead of returning an empty string.
-try:
-    output_moderation_hooks.normalize("   ")
-except ValueError as exc:
-    print(f"rejected: {exc}")
+rules = [Rule("r1", "pii", pattern=r"\b\d{3}-\d{2}-\d{4}\b", action="redact")]
+moderator = Moderator(rules)
+decision = moderator.check("SSN 123-45-6789 ok")
+print(decision.action, decision.text)
+# Output: redact SSN [REDACTED:pii] ok
 ```
 
-## Documentation
+## Public API Summary
 
-- [Architecture](docs/ARCHITECTURE.md) and [decisions](docs/decisions/)
-- [Testing](docs/TESTING.md) and [security](docs/SECURITY.md)
-- [Project record](docs/PROJECT.md) and [stack](docs/STACK.md)
-- [Changelog](CHANGELOG.md) and [contributing guide](CONTRIBUTING.md)
+- `Rule(id: str, category: str, *, pattern: str | None = None, terms: Sequence[str] = (), action: Literal['block', 'redact', 'flag'] = 'flag')`: Define validation rules.
+- `ClassifierPort(Protocol)`: Interface for external scoring. Implements `classify(self, text: str) -> Mapping[str, float]`.
+- `Moderator(...)`: Main engine. Accepts rules, classifiers, thresholds, fail_open, holdback_chars (default 64), and max_input_chars (default 100,000).
+- `Moderator.check(text: str) -> Decision`: Evaluate all rules and classifiers against static text.
+- `Moderator.stream(chunks: Iterable[str]) -> Iterator[str]`: Evaluate rules against a stream with a holdback window.
+- `load_rules(data: Mapping[str, Any]) -> list[Rule]`: Loader for rule configuration.
 
-## License
+Errors include `ModerationError` (with codes `invalid_rule`, `too_many_rules`, `input_too_large`, `classifier_failed`) and `BlockedOutputError`.
 
-[MIT](LICENSE) (c) 2026 Miguel Gomez
+## Why not <best-known alternative>
+
+Existing guardrails frameworks often introduce large dependency trees or are designed for monolithic application rather than low-latency stream processing. `output-moderation-hooks` provides a lightweight, dependency-free utility with deterministic precedence logic and native streaming support via a holdback window.
+
+## Security
+
+See [docs/SECURITY.md](docs/SECURITY.md) for threat model and limits.
