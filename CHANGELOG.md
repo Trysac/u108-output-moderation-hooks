@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add Moderator with regex/term matching, streaming holdback, classifier integration, and load_rules loader
 - Initial project structure from the factory utility template.

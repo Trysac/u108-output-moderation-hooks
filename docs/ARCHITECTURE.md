@@ -1,29 +1,19 @@
 # Architecture
 
-## Purpose
+`trysac-output-moderation-hooks` provides guardrail utilities for filtering and redacting LLM text responses, both statically and in streaming mode.
 
-`trysac-output-moderation-hooks` is a small, dependency-free Python library: Moderate LLM output with configurable regex and term rules, categories, block, redact and flag actions, optional classifiers and streaming holdback
+## Pipeline
 
-## Shape
-
-```text
-caller code --> output_moderation_hooks (public API in __init__.py)
-                    |
-                    +-- pure functions, no I/O, no global state
-```
-
-- **Public API**: the names listed in `__all__` of `src/output_moderation_hooks/__init__.py`. Anything else is
-  internal and may change without a major version.
-- **Errors**: invalid input raises built-in exceptions (`ValueError`, `TypeError`) with a clear
-  message; the library never prints or exits.
-- **Side effects**: none. If a feature needs I/O, isolate it in its own module behind a small
-  interface and record the choice in an ADR.
-
-## Quality contract
-
-`scripts/check.py` is the single definition of the gates; `fabrica.json` tells the factory and CI
-how to run it. See [TESTING.md](TESTING.md).
-
-## Decisions
-
-Architecture decisions are recorded in [decisions/](decisions/) as numbered ADRs.
+1. **Rule Evaluation**:
+   - Regex patterns are checked against raw input.
+   - Terms are checked case-insensitively with boundary checks against a normalized view (NFKC, casefold, stripped zero-width characters) and mapped back to code point offsets.
+2. **Classifier Evaluation**:
+   - Executed only during whole-text `check()` calls (not in streaming mode).
+   - Results >= threshold trigger a synthetic `classifier:<category>` block finding.
+3. **Action Precedence**:
+   - `block`: Emits blocked event, returns empty string `""` or raises `BlockedOutputError` in streaming mode.
+   - `redact`: Merges overlapping findings, replacing text spans with `[REDACTED:<category>]`.
+   - `flag`: Preserves original text, returns `flag` action.
+   - `allow`: No findings triggered.
+4. **Streaming Holdback**:
+   - Maintains a sliding holdback window (`holdback_chars`) so regex and term boundaries across token chunks are caught before being emitted to callers.

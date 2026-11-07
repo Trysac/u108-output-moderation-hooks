@@ -3,18 +3,13 @@
 ## Running
 
 ```sh
-uv run pytest --cov=output_moderation_hooks   # tests with coverage report
-uv run python scripts/check.py      # every gate, as CI and the factory run it
+uv run pytest --cov=output_moderation_hooks
 ```
 
-## Policy
+## Coverage
 
-- Branch coverage of `src/output_moderation_hooks` must stay at or above 80 %; the gate fails below it.
-- Tests exercise the public API (`import output_moderation_hooks`) and assert every observable effect:
-  return values, raised exceptions and their messages.
-- Each bug fix starts with a failing test that reproduces it.
-- Tests are deterministic: no network, no wall clock, no dependence on test order.
+The tests reside in `tests/test_output_moderation_hooks.py` and cover the following:
 
-## Layout
-
-`tests/test_<module>.py` mirrors each public module. Shared fixtures go in `tests/conftest.py`.
+- **Acceptance Criteria**: The test suite covers the specific acceptance scenarios defined in the project specification, including rule application (`redact`, `block`, `flag`), action precedence, term normalization (NFKC, casefold, and zero-width character stripping), classifier integration and error handling, and the streaming holdback mechanism.
+- **Error Handling**: Tests verify that invalid rule definitions raise `ModerationError` with appropriate codes (`invalid_rule`, `too_many_rules`, `input_too_large`), and that classifier failures raise expected exceptions when not `fail_open`.
+- **Event Emission**: Tests confirm `on_event` receives correct metadata without leaking sensitive matched content.
