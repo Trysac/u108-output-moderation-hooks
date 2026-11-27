@@ -4,8 +4,10 @@ Moderate LLM output with configurable regex and term rules, categories, block, r
 
 ## Installation
 
+Not published to PyPI yet. Install it from GitHub:
+
 ```bash
-pip install output-moderation-hooks
+pip install "git+https://github.com/Trysac/u108-output-moderation-hooks"
 ```
 
 ## Usage
